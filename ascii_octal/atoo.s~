@@ -1,0 +1,107 @@
+/*
+Bradley Kennedy (bckenne)
+CPSC 2310 summer 2014
+July 24, 2014
+Program 3
+This file contains two functions: 
+one that converts ascii octal to octal 
+one that converts octal to ascii octal
+*/
+
+	.global atoo
+	.type atoo, %function
+	
+	asc	.req	r6
+	oct	.req	r4
+	offset	.req	r5
+	mask	.req	r7
+	count	.req	r9
+	
+/* atoo - ascii-to-octal
+ *
+ * prototype
+ *   unsigned atoo( char * );
+ *
+ * input parameter
+ *   r0 - pointer to string containing octal digits
+ *
+ * return value
+ *   r0  - binary value when input string is interpreted
+ *         as string of octal digits
+ *
+ * notes
+ *   goal is an atoi()-like interface
+ *   stops on first ascii character that cannot be converted (that is,
+ *     the first character that is not between '0' and '7')
+ *   overflow is not checked -- only the last eleven digits in the
+ *     input string are significant in cases with more than eleven
+ *   for eleven or more digits, the leftmost octal digit will be
+ *     limited in range from 0-3 since there are 32 rather than 33
+ *     bits in a word
+ *
+ * local register map
+        r4(oct)         - holds actual octal value as it is created
+        r6(asc)         - holds the ascii character to be converted
+        r5(offset)      - holds the offset of where the ascii characters are held
+ */	
+atoo:
+	push 	{lr}
+	mov	offset, #0
+	mov	oct, #0
+	@ mov	r8, r0
+loop:
+	ldrb	asc, [r0, offset]
+	sub	asc, asc, #0x30
+	cmp	asc, #0
+	blt	atoo_ret
+	cmp	asc, #7
+	bgt	atoo_ret
+	lsl	oct, oct, #3
+	add	oct, oct, asc
+	add	offset, offset, #1
+	b	loop
+atoo_ret:
+	mov	r0, oct
+	pop	{lr}
+	bx	lr
+
+	.global otoa
+	.type otoa, %function
+
+otoa:
+	push	{r4-r7,lr}
+	mov	offset, #0
+	mov	oct, r0
+	mov	mask, #7
+	mov	r8, r1
+	mov	count, #30
+	mov	r3, #0
+loop3:
+	lsr	r10, oct, count
+	and	asc, r10, mask
+	add	asc, asc, #0x30
+	cmp	asc, #0x30
+	bne	next
+	cmp	r3, #1
+	bne	skip
+next:
+	mov	r3, #1
+	strb	asc, [r8, offset]
+	add	offset, offset, #1
+skip:
+	sub	count, count, #3
+	cmp	count, #0
+	moveq	r3, #1
+	bge	loop3
+		
+	mov	r2, #0
+	strb	r2, [r8, offset]
+	pop	{r4-r7, lr}
+	bx		lr
+
+	.unreq	oct
+	.unreq	offset
+	.unreq	mask
+	.unreq	asc
+	
+.prt:	.ascii "r1 = %d\012\000"
